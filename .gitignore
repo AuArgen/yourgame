@@ -1,0 +1,26 @@
+# IDE files
+.idea/
+.vscode/
+
+# PHP
+vendor/
+composer.lock
+.php-cs-fixer.cache
+.phpunit.result.cache
+
+# Docker
+.env
+db_data/
+
+# Storage
+storage/images/*
+!storage/images/.gitkeep
+storage/logs/*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+error_log
+php_errors.log
