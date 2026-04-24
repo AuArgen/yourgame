@@ -40,7 +40,9 @@ class Helpers {
         }
 
         $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-        if (!in_array($file['type'], $allowedTypes)) {
+        $finfo = new \finfo(FILEINFO_MIME_TYPE);
+        $mimeType = $finfo->file($file['tmp_name']);
+        if (!in_array($mimeType, $allowedTypes)) {
             return null;
         }
 

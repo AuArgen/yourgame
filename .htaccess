@@ -1,0 +1,21 @@
+Options -Indexes
+
+# Protect .env
+<FilesMatch "^\.env">
+    Require all denied
+</FilesMatch>
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    # Block direct access to sensitive directories
+    RewriteRule ^(src|views|docs|storage/logs)(/|$) - [F,L]
+
+    # Serve real files (images, css, js) directly
+    RewriteCond %{REQUEST_FILENAME} -f
+    RewriteRule ^ - [L]
+
+    # Everything else → public/index.php
+    RewriteRule ^ public/index.php [QSA,L]
+</IfModule>

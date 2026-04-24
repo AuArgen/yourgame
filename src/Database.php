@@ -16,10 +16,10 @@ class Database {
     private $charset = 'utf8';
 
     private function __construct() {
-        $this->host = getenv('DB_HOST') ?: 'db';
-        $this->db   = getenv('POSTGRES_DB') ?: 'yourgame';
-        $this->user = getenv('POSTGRES_USER') ?: 'user';
-        $this->pass = getenv('POSTGRES_PASSWORD') ?: 'pass';
+        $this->host = getenv('DB_HOST') ?: 'localhost';
+        $this->db   = getenv('DB_NAME') ?: 'yourgame';
+        $this->user = getenv('DB_USER') ?: 'user';
+        $this->pass = getenv('DB_PASS') ?: '';
 
         $dsn = "pgsql:host=$this->host;dbname=$this->db;options='--client_encoding=$this->charset'";
         $options = [
