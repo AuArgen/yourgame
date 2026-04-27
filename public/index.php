@@ -32,6 +32,7 @@ require_once __DIR__ . '/../src/Database.php';
 require_once __DIR__ . '/../src/Auth.php';
 require_once __DIR__ . '/../src/Helpers.php';
 require_once __DIR__ . '/../src/Repositories/UserRepository.php';
+require_once __DIR__ . '/../src/Repositories/RoundRepository.php';
 require_once __DIR__ . '/../src/Repositories/GameRepository.php';
 require_once __DIR__ . '/../src/Repositories/CategoryRepository.php';
 require_once __DIR__ . '/../src/Repositories/QuestionRepository.php';
@@ -42,6 +43,21 @@ session_start();
 
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $method = $_SERVER['REQUEST_METHOD'];
+
+// Serve uploaded images (needed when document root is public/)
+if (preg_match('#^/storage/images/([A-Za-z0-9_.-]+)$#', $uri, $m)) {
+    $path = __DIR__ . '/../storage/images/' . $m[1];
+    if (is_file($path)) {
+        $mime = (new \finfo(FILEINFO_MIME_TYPE))->file($path);
+        if (in_array($mime, ['image/jpeg', 'image/png', 'image/gif', 'image/webp'], true)) {
+            header('Content-Type: ' . $mime);
+            readfile($path);
+            exit;
+        }
+    }
+    http_response_code(404);
+    exit;
+}
 
 // Простой роутинг
 switch ($uri) {
