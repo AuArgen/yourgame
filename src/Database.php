@@ -18,8 +18,8 @@ class Database {
     private function __construct() {
         $this->host = getenv('DB_HOST') ?: 'localhost';
         $this->db   = getenv('DB_NAME') ?: 'yourgame';
-        $this->user = getenv('DB_USER') ?: 'user';
-        $this->pass = getenv('DB_PASS') ?: '';
+        $this->user = getenv('DB_USER') ?: 'postgres';
+        $this->pass = getenv('DB_PASS') ?: '1234';
 
         $dsn = "pgsql:host=$this->host;dbname=$this->db;options='--client_encoding=$this->charset'";
         $options = [

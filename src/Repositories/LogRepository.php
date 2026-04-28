@@ -43,7 +43,7 @@ class LogRepository {
         $stmt = $this->db->prepare("
             SELECT DISTINCT question_id 
             FROM game_logs 
-            WHERE session_id = :session_id AND action IN ('answered_correct', 'skipped')
+            WHERE session_id = :session_id AND action IN ('answered_correct', 'answered_wrong', 'skipped')
         ");
         $stmt->execute(['session_id' => $sessionId]);
         return $stmt->fetchAll(PDO::FETCH_COLUMN);

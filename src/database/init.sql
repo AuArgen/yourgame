@@ -22,10 +22,18 @@ CREATE TABLE IF NOT EXISTS games (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Create rounds table
+CREATE TABLE IF NOT EXISTS rounds (
+    id SERIAL PRIMARY KEY,
+    game_id INTEGER REFERENCES games(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL DEFAULT '1-раунд',
+    sort_order INTEGER DEFAULT 0
+);
+
 -- Create categories table
 CREATE TABLE IF NOT EXISTS categories (
     id SERIAL PRIMARY KEY,
-    game_id INTEGER REFERENCES games(id) ON DELETE CASCADE,
+    round_id INTEGER REFERENCES rounds(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     sort_order INTEGER DEFAULT 0
 );
@@ -38,6 +46,7 @@ CREATE TABLE IF NOT EXISTS questions (
     answer_text TEXT NOT NULL,
     points INTEGER NOT NULL,
     is_cat_in_bag BOOLEAN DEFAULT FALSE,
+    special_type VARCHAR(50) NOT NULL DEFAULT 'normal',
     time_limit INTEGER DEFAULT 30, -- seconds
     image_url VARCHAR(255),
     video_url VARCHAR(255), -- For YouTube IDs
@@ -50,6 +59,9 @@ CREATE TABLE IF NOT EXISTS game_sessions (
     game_id INTEGER REFERENCES games(id) ON DELETE CASCADE,
     host_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     status VARCHAR(20) DEFAULT 'waiting', -- waiting, active, finished
+    current_round_id INTEGER REFERENCES rounds(id) ON DELETE SET NULL,
+    active_question_id INTEGER REFERENCES questions(id) ON DELETE SET NULL,
+    cat_target_participant_id INTEGER,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -60,6 +72,19 @@ CREATE TABLE IF NOT EXISTS participants (
     name VARCHAR(100) NOT NULL,
     score INTEGER DEFAULT 0
 );
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'fk_game_sessions_cat_target_participant'
+    ) THEN
+        ALTER TABLE game_sessions
+        ADD CONSTRAINT fk_game_sessions_cat_target_participant
+        FOREIGN KEY (cat_target_participant_id) REFERENCES participants(id) ON DELETE SET NULL;
+    END IF;
+END $$;
 
 -- Create game_logs table for game state recovery
 CREATE TABLE IF NOT EXISTS game_logs (

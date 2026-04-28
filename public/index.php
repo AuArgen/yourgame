@@ -29,6 +29,7 @@ if ((getenv('APP_ENV') ?: 'production') === 'production') {
 }
 
 require_once __DIR__ . '/../src/Database.php';
+require_once __DIR__ . '/../src/Lang.php';
 require_once __DIR__ . '/../src/Auth.php';
 require_once __DIR__ . '/../src/Helpers.php';
 require_once __DIR__ . '/../src/Repositories/UserRepository.php';
@@ -40,6 +41,16 @@ require_once __DIR__ . '/../src/Repositories/SessionRepository.php';
 require_once __DIR__ . '/../src/Repositories/LogRepository.php';
 
 session_start();
+
+// Language switching
+if (isset($_GET['setlang']) && in_array($_GET['setlang'], ['ru', 'ky'], true)) {
+    $_SESSION['lang'] = $_GET['setlang'];
+    $params = $_GET;
+    unset($params['setlang']);
+    $qs = !empty($params) ? '?' . http_build_query($params) : '';
+    \App\Helpers::redirect(strtok($_SERVER['REQUEST_URI'], '?') . $qs);
+}
+\App\Lang::setLocale($_SESSION['lang'] ?? 'ru');
 
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $method = $_SERVER['REQUEST_METHOD'];

@@ -1,5 +1,16 @@
+<?php
+use App\Helpers;
+use App\Lang;
+
+$currentLocale = Lang::getLocale();
+$switchLocale  = $currentLocale === 'ru' ? 'ky' : 'ru';
+$switchLabel   = Helpers::t('nav.lang_label');
+$currentPath   = strtok($_SERVER['REQUEST_URI'], '?');
+$switchParams  = array_merge($_GET ?? [], ['setlang' => $switchLocale]);
+$switchUrl     = $currentPath . '?' . http_build_query($switchParams);
+?>
 <!DOCTYPE html>
-<html lang="ky">
+<html lang="<?= $currentLocale ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,24 +19,26 @@
 </head>
 <body class="bg-gray-100 font-sans leading-normal tracking-normal">
 
-    <!-- Navbar -->
     <nav class="bg-blue-600 p-4 text-white shadow-lg">
         <div class="container mx-auto flex justify-between items-center">
-            <a href="/" class="text-2xl font-bold tracking-wider">Своя Игра</a>
-            <div class="space-x-4">
+            <a href="/" class="text-2xl font-bold tracking-wider"><?= Helpers::t('nav.brand') ?></a>
+            <div class="flex items-center space-x-4">
                 <?php if (isset($_SESSION['user_id'])): ?>
-                    <a href="/dashboard" class="hover:underline">Менин оюндарым</a>
-                    <a href="/dashboard/history" class="hover:underline">Тарых</a>
-                    <a href="/logout" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded transition">Чыгуу</a>
+                    <a href="/dashboard" class="hover:underline"><?= Helpers::t('nav.my_games') ?></a>
+                    <a href="/dashboard/history" class="hover:underline"><?= Helpers::t('nav.history') ?></a>
+                    <a href="/logout" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded transition"><?= Helpers::t('nav.logout') ?></a>
                 <?php else: ?>
-                    <a href="/login" class="hover:underline">Кирүү</a>
-                    <a href="/register" class="bg-white text-blue-600 px-4 py-2 rounded font-bold hover:bg-gray-100 transition">Катталуу</a>
+                    <a href="/login" class="hover:underline"><?= Helpers::t('nav.login') ?></a>
+                    <a href="/register" class="bg-white text-blue-600 px-4 py-2 rounded font-bold hover:bg-gray-100 transition"><?= Helpers::t('nav.register') ?></a>
                 <?php endif; ?>
+                <a href="<?= Helpers::e($switchUrl) ?>"
+                   class="border border-white text-white text-xs px-2 py-1 rounded hover:bg-white hover:text-blue-600 transition font-bold">
+                    <?= $switchLabel ?>
+                </a>
             </div>
         </div>
     </nav>
 
-    <!-- Main Content -->
     <main class="container mx-auto mt-8 px-4">
         <?php if (isset($_SESSION['error'])): ?>
             <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -45,7 +58,7 @@
     </main>
 
     <footer class="container mx-auto text-center mt-12 py-6 text-gray-500 text-sm">
-        &copy; <?= date('Y') ?> Своя Игра Проекти. Бардык укуктар корголгон.
+        &copy; <?= date('Y') ?> <?= Helpers::t('footer.text') ?>
     </footer>
 
 </body>

@@ -10,24 +10,24 @@ ob_start();
 
 <div class="max-w-5xl mx-auto">
     <div class="flex justify-between items-center mb-8">
-        <h1 class="text-3xl font-bold text-gray-800">Оюндардын тарыхы</h1>
-        <a href="/dashboard" class="text-blue-600 hover:underline">← Dashboard</a>
+        <h1 class="text-3xl font-bold text-gray-800"><?= Helpers::t('history.title') ?></h1>
+        <a href="/dashboard" class="text-blue-600 hover:underline"><?= Helpers::t('history.back') ?></a>
     </div>
 
     <?php if (empty($history)): ?>
         <div class="bg-white p-12 rounded-xl shadow-md text-center">
-            <p class="text-gray-500">Сиз азырынча бир да оюн өткөрө элексиз.</p>
+            <p class="text-gray-500"><?= Helpers::t('history.empty') ?></p>
         </div>
     <?php else: ?>
         <div class="bg-white rounded-xl shadow-md overflow-hidden">
             <table class="w-full text-left border-collapse">
                 <thead class="bg-gray-50 border-b">
                     <tr>
-                        <th class="px-6 py-4 font-bold text-gray-700">Оюн</th>
-                        <th class="px-6 py-4 font-bold text-gray-700">Убактысы</th>
-                        <th class="px-6 py-4 font-bold text-gray-700">Катышуучулар</th>
-                        <th class="px-6 py-4 font-bold text-gray-700">Жеңүүчү</th>
-                        <th class="px-6 py-4 font-bold text-gray-700">Аракет</th>
+                        <th class="px-6 py-4 font-bold text-gray-700"><?= Helpers::t('history.game_col') ?></th>
+                        <th class="px-6 py-4 font-bold text-gray-700"><?= Helpers::t('history.date_col') ?></th>
+                        <th class="px-6 py-4 font-bold text-gray-700"><?= Helpers::t('history.players_col') ?></th>
+                        <th class="px-6 py-4 font-bold text-gray-700"><?= Helpers::t('history.winner_col') ?></th>
+                        <th class="px-6 py-4 font-bold text-gray-700"><?= Helpers::t('history.action_col') ?></th>
                     </tr>
                 </thead>
                 <tbody class="divide-y">
@@ -45,11 +45,11 @@ ob_start();
                             </td>
                             <td class="px-6 py-4">
                                 <span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs font-bold">
-                                    🏆 <?= Helpers::e($session['winner_name'] ?? 'Аныктала элек') ?>
+                                    🏆 <?= Helpers::e($session['winner_name'] ?? Helpers::t('history.unknown_winner')) ?>
                                 </span>
                             </td>
                             <td class="px-6 py-4">
-                                <a href="/game/summary?session_id=<?= $session['id'] ?>" class="text-blue-600 hover:underline font-medium">Жыйынтык</a>
+                                <a href="/game/summary?session_id=<?= $session['id'] ?>" class="text-blue-600 hover:underline font-medium"><?= Helpers::t('history.results_link') ?></a>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -61,6 +61,6 @@ ob_start();
 
 <?php
 $content = ob_get_clean();
-$title = "Тарых - Своя Игра";
+$title = Helpers::t('history.page_title');
 include __DIR__ . '/../layout/main.php';
 ?>

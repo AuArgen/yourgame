@@ -16,7 +16,7 @@ class Auth {
         $this->userRepository = new UserRepository();
         $this->gameRepository = new GameRepository();
         $this->db = Database::getInstance()->getConnection();
-        
+
         if (session_status() === PHP_SESSION_NONE) {
             session_start([
                 'cookie_httponly' => true,
@@ -28,10 +28,10 @@ class Auth {
 
     public function register($username, $email, $password) {
         if ($this->userRepository->findByUsername($username)) {
-            return ['success' => false, 'message' => 'Бул колдонуучу аты мурунтан бар.'];
+            return ['success' => false, 'message' => Helpers::t('auth.register.username_exists')];
         }
         if ($this->userRepository->findByEmail($email)) {
-            return ['success' => false, 'message' => 'Бул Email мурунтан катталган.'];
+            return ['success' => false, 'message' => Helpers::t('auth.register.email_exists')];
         }
 
         $passwordHash = password_hash($password, PASSWORD_ARGON2ID);
@@ -43,13 +43,13 @@ class Auth {
             return ['success' => true];
         }
 
-        return ['success' => false, 'message' => 'Каттоо учурунда ката кетти.'];
+        return ['success' => false, 'message' => Helpers::t('auth.register.failed')];
     }
 
     public function login($email, $password) {
         $ip = $_SERVER['REMOTE_ADDR'];
         if ($this->isBlocked($ip)) {
-            return ['success' => false, 'message' => 'Ашыкча ката кирүү аракети. 15 мүнөт күтө туруңуз.'];
+            return ['success' => false, 'message' => Helpers::t('auth.login.too_many_attempts')];
         }
 
         $user = $this->userRepository->findByEmail($email);
@@ -61,7 +61,7 @@ class Auth {
         }
 
         $this->logAttempt($ip);
-        return ['success' => false, 'message' => 'Email же пароль туура эмес.'];
+        return ['success' => false, 'message' => Helpers::t('auth.login.invalid')];
     }
 
     private function loginById($userId) {
@@ -97,9 +97,9 @@ class Auth {
 
     private function isBlocked($ip) {
         $stmt = $this->db->prepare("
-            SELECT COUNT(*) 
-            FROM auth_attempts 
-            WHERE ip_address = :ip 
+            SELECT COUNT(*)
+            FROM auth_attempts
+            WHERE ip_address = :ip
             AND attempt_time > NOW() - INTERVAL '1 minute'
         ");
         $stmt->execute(['ip' => $ip]);

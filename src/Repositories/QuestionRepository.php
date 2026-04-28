@@ -15,7 +15,7 @@ class QuestionRepository {
     public function create($data) {
         $fields = array_keys($data);
         $placeholders = array_map(function($field) { return ":$field"; }, $fields);
-        
+
         $sql = "INSERT INTO questions (" . implode(', ', $fields) . ") VALUES (" . implode(', ', $placeholders) . ") RETURNING id";
         $stmt = $this->db->prepare($sql);
         $stmt->execute($data);
@@ -40,7 +40,7 @@ class QuestionRepository {
             $sets[] = "$field = :$field";
         }
         $data['id'] = $id;
-        
+
         $sql = "UPDATE questions SET " . implode(', ', $sets) . " WHERE id = :id";
         $stmt = $this->db->prepare($sql);
         return $stmt->execute($data);
@@ -51,18 +51,37 @@ class QuestionRepository {
         return $stmt->execute(['id' => $id]);
     }
 
+    // Returns all rounds → categories → questions for a game (used in editor)
     public function getFullGameData($gameId) {
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
+                r.id as round_id, r.name as round_name, r.sort_order as round_sort,
                 c.id as category_id, c.name as category_name, c.sort_order as cat_sort,
-                q.id as question_id, q.question_text, q.answer_text, q.points, 
-                q.is_cat_in_bag, q.time_limit, q.image_url, q.video_url, q.sort_order as q_sort
-            FROM categories c
+                q.id as question_id, q.question_text, q.answer_text, q.points,
+                q.is_cat_in_bag, q.special_type, q.time_limit, q.image_url, q.video_url, q.sort_order as q_sort
+            FROM rounds r
+            JOIN categories c ON c.round_id = r.id
             LEFT JOIN questions q ON c.id = q.category_id
-            WHERE c.game_id = :game_id
-            ORDER BY c.sort_order ASC, c.id ASC, q.points ASC, q.sort_order ASC
+            WHERE r.game_id = :game_id
+            ORDER BY r.sort_order ASC, r.id ASC, c.sort_order ASC, c.id ASC, q.points ASC, q.sort_order ASC
         ");
         $stmt->execute(['game_id' => $gameId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    // Returns categories → questions for a single round (used during gameplay)
+    public function getFullRoundData($roundId) {
+        $stmt = $this->db->prepare("
+            SELECT
+                c.id as category_id, c.name as category_name, c.sort_order as cat_sort,
+                q.id as question_id, q.question_text, q.answer_text, q.points,
+                q.is_cat_in_bag, q.special_type, q.time_limit, q.image_url, q.video_url, q.sort_order as q_sort
+            FROM categories c
+            LEFT JOIN questions q ON c.id = q.category_id
+            WHERE c.round_id = :round_id
+            ORDER BY c.sort_order ASC, c.id ASC, q.points ASC, q.sort_order ASC
+        ");
+        $stmt->execute(['round_id' => $roundId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 }

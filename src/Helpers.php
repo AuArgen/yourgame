@@ -34,6 +34,10 @@ class Helpers {
         return isset($match[1]) ? $match[1] : null;
     }
 
+    public static function t(string $key, array $params = []): string {
+        return \App\Lang::get($key, $params);
+    }
+
     public static function uploadImage($file) {
         if (!isset($file['tmp_name']) || $file['error'] !== UPLOAD_ERR_OK) {
             return null;
