@@ -18,7 +18,20 @@ class QuestionRepository {
 
         $sql = "INSERT INTO questions (" . implode(', ', $fields) . ") VALUES (" . implode(', ', $placeholders) . ") RETURNING id";
         $stmt = $this->db->prepare($sql);
-        $stmt->execute($data);
+
+        foreach ($data as $field => $value) {
+            if (is_null($value)) {
+                $stmt->bindValue(":$field", null, PDO::PARAM_NULL);
+            } elseif (is_bool($value)) {
+                $stmt->bindValue(":$field", $value, PDO::PARAM_BOOL);
+            } elseif (is_int($value)) {
+                $stmt->bindValue(":$field", $value, PDO::PARAM_INT);
+            } else {
+                $stmt->bindValue(":$field", $value, PDO::PARAM_STR);
+            }
+        }
+
+        $stmt->execute();
         return $stmt->fetchColumn();
     }
 
@@ -39,11 +52,24 @@ class QuestionRepository {
         foreach ($data as $field => $value) {
             $sets[] = "$field = :$field";
         }
-        $data['id'] = $id;
 
         $sql = "UPDATE questions SET " . implode(', ', $sets) . " WHERE id = :id";
         $stmt = $this->db->prepare($sql);
-        return $stmt->execute($data);
+
+        foreach ($data as $field => $value) {
+            if (is_null($value)) {
+                $stmt->bindValue(":$field", null, PDO::PARAM_NULL);
+            } elseif (is_bool($value)) {
+                $stmt->bindValue(":$field", $value, PDO::PARAM_BOOL);
+            } elseif (is_int($value)) {
+                $stmt->bindValue(":$field", $value, PDO::PARAM_INT);
+            } else {
+                $stmt->bindValue(":$field", $value, PDO::PARAM_STR);
+            }
+        }
+        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+
+        return $stmt->execute();
     }
 
     public function delete($id) {
@@ -58,7 +84,7 @@ class QuestionRepository {
                 r.id as round_id, r.name as round_name, r.sort_order as round_sort,
                 c.id as category_id, c.name as category_name, c.sort_order as cat_sort,
                 q.id as question_id, q.question_text, q.answer_text, q.points,
-                q.is_cat_in_bag, q.special_type, q.time_limit, q.image_url, q.video_url, q.sort_order as q_sort
+                q.is_cat_in_bag, q.special_type, q.time_limit, q.image_url, q.answer_image_url, q.video_url, q.sort_order as q_sort
             FROM rounds r
             JOIN categories c ON c.round_id = r.id
             LEFT JOIN questions q ON c.id = q.category_id
@@ -75,7 +101,7 @@ class QuestionRepository {
             SELECT
                 c.id as category_id, c.name as category_name, c.sort_order as cat_sort,
                 q.id as question_id, q.question_text, q.answer_text, q.points,
-                q.is_cat_in_bag, q.special_type, q.time_limit, q.image_url, q.video_url, q.sort_order as q_sort
+                q.is_cat_in_bag, q.special_type, q.time_limit, q.image_url, q.answer_image_url, q.video_url, q.sort_order as q_sort
             FROM categories c
             LEFT JOIN questions q ON c.id = q.category_id
             WHERE c.round_id = :round_id

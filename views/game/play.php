@@ -462,9 +462,17 @@ ob_start();
                 </button>
 
                 <div id="answerSection" class="hidden animate-bounce-in">
-                    <div id="aText" class="text-5xl font-black mb-12" style="color: #FACC15;">
+                    <div id="aText" class="text-5xl font-black mb-6" style="color: #FACC15;">
                         <?= Helpers::e($activeQuestion['answer_text']) ?>
                     </div>
+                    <?php if (!empty($activeQuestion['answer_image_url'])): ?>
+                        <div class="flex justify-center mb-10">
+                            <img src="/storage/images/<?= Helpers::e($activeQuestion['answer_image_url']) ?>"
+                                 class="max-h-80 rounded-lg shadow-lg">
+                        </div>
+                    <?php else: ?>
+                        <div class="mb-10"></div>
+                    <?php endif; ?>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-5xl mx-auto">
                         <?php foreach ($answerParticipants as $participant): ?>
@@ -601,6 +609,7 @@ function startTimer(seconds) {
 
 function showAnswer() {
     clearInterval(timerInterval);
+    document.getElementById('qContent').classList.add('hidden');
     document.getElementById('showBtn').classList.add('hidden');
     document.getElementById('answerSection').classList.remove('hidden');
 }

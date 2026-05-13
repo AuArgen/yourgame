@@ -105,18 +105,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
                 $image = Helpers::uploadImage($_FILES['image']);
             }
+            $answerImage = null;
+            if (isset($_FILES['answer_image']) && $_FILES['answer_image']['error'] === UPLOAD_ERR_OK) {
+                $answerImage = Helpers::uploadImage($_FILES['answer_image']);
+            }
 
             if ($catId && !empty($text) && !empty($answer)) {
                 $questionRepo->create([
-                    'category_id'   => $catId,
-                    'question_text' => $text,
-                    'answer_text'   => $answer,
-                    'points'        => $points,
-                    'time_limit'    => $timeLimit,
-                    'is_cat_in_bag' => $isCat ? 'true' : 'false',
-                    'special_type'  => $specialType,
-                    'video_url'     => $youtubeId,
-                    'image_url'     => $image,
+                    'category_id'      => $catId,
+                    'question_text'    => $text,
+                    'answer_text'      => $answer,
+                    'points'           => $points,
+                    'time_limit'       => $timeLimit,
+                    'is_cat_in_bag'    => $isCat ? 'true' : 'false',
+                    'special_type'     => $specialType,
+                    'video_url'        => $youtubeId,
+                    'image_url'        => $image,
+                    'answer_image_url' => $answerImage,
                 ]);
                 $redirectAnchor = "category-$catId";
                 $_SESSION['success'] = Helpers::t('game.edit.question_added');
@@ -157,9 +162,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $updateData['image_url'] = $uploaded;
                     }
                 }
-                $questionRepo->update($qId, $updateData);
+                if (isset($_POST['clear_answer_image'])) {
+                    $updateData['answer_image_url'] = null;
+                } elseif (isset($_FILES['answer_image']) && $_FILES['answer_image']['error'] === UPLOAD_ERR_OK) {
+                    $uploadedAnswer = Helpers::uploadImage($_FILES['answer_image']);
+                    if ($uploadedAnswer) {
+                        $updateData['answer_image_url'] = $uploadedAnswer;
+                    }
+                }
+                try {
+                    $questionRepo->update($qId, $updateData);
+                    $_SESSION['success'] = Helpers::t('game.edit.question_updated');
+                } catch (\Exception $e) {
+                    $_SESSION['error'] = Helpers::t('game.edit.question_save_error');
+                    error_log("[edit_question] update() failed for qId=$qId: " . $e->getMessage() . " data=" . json_encode($updateData));
+                }
                 $redirectAnchor = "category-{$question['category_id']}";
-                $_SESSION['success'] = Helpers::t('game.edit.question_updated');
             }
 
         } elseif ($action === 'delete_question') {
@@ -311,7 +329,21 @@ ob_start();
                                             <div class="border rounded-lg p-3 text-center <?= $q ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-dashed border-gray-300' ?>">
                                                 <div class="font-bold text-base mb-1 <?= $q ? 'text-blue-700' : 'text-gray-400' ?>"><?= $p ?></div>
                                                 <?php if ($q): ?>
-                                                    <div class="text-xs text-gray-600 truncate mb-2"><?= Helpers::e($q['question_text']) ?></div>
+                                                    <div class="text-xs text-gray-600 truncate mb-1"><?= Helpers::e($q['question_text']) ?></div>
+                                                    <?php if (!empty($q['image_url']) || !empty($q['answer_image_url'])): ?>
+                                                        <div class="flex justify-center gap-1 mb-1">
+                                                            <?php if (!empty($q['image_url'])): ?>
+                                                                <span class="inline-flex items-center gap-0.5 text-[9px] font-bold bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded" title="Есть фото вопроса">
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-2.5 h-2.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd"/></svg>Q
+                                                                </span>
+                                                            <?php endif; ?>
+                                                            <?php if (!empty($q['answer_image_url'])): ?>
+                                                                <span class="inline-flex items-center gap-0.5 text-[9px] font-bold bg-green-100 text-green-600 px-1.5 py-0.5 rounded" title="Есть фото ответа">
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-2.5 h-2.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd"/></svg>A
+                                                                </span>
+                                                            <?php endif; ?>
+                                                        </div>
+                                                    <?php endif; ?>
                                                     <?php if (($q['special_type'] ?? 'normal') !== 'normal'): ?>
                                                         <div class="text-[10px] font-bold uppercase tracking-wide text-orange-500 mb-2">
                                                             <?= Helpers::e($specialQuestionTypes[$q['special_type']] ?? $q['special_type']) ?>
@@ -320,15 +352,16 @@ ob_start();
                                                     <div class="flex justify-center gap-3 mt-1">
                                                         <button type="button"
                                                             onclick="openEditModal(<?= htmlspecialchars(json_encode([
-                                                                'id'            => (int) $q['question_id'],
-                                                                'question_text' => $q['question_text'],
-                                                                'answer_text'   => $q['answer_text'],
-                                                                'time_limit'    => (int) ($q['time_limit'] ?? 30),
-                                                                'special_type'  => $q['special_type'] ?? 'normal',
-                                                                'image_url'     => $q['image_url'] ?? null,
-                                                                'video_url'     => $q['video_url'] ?? null,
-                                                                'catId'         => $catId,
-                                                                'points'        => $p,
+                                                                'id'               => (int) $q['question_id'],
+                                                                'question_text'    => $q['question_text'],
+                                                                'answer_text'      => $q['answer_text'],
+                                                                'time_limit'       => (int) ($q['time_limit'] ?? 30),
+                                                                'special_type'     => $q['special_type'] ?? 'normal',
+                                                                'image_url'        => $q['image_url'] ?? null,
+                                                                'answer_image_url' => $q['answer_image_url'] ?? null,
+                                                                'video_url'        => $q['video_url'] ?? null,
+                                                                'catId'            => $catId,
+                                                                'points'           => $p,
                                                             ]), ENT_QUOTES) ?>)"
                                                             class="text-blue-500 hover:underline text-xs"><?= Helpers::t('game.edit.edit_question_btn') ?></button>
                                                         <form action="/dashboard/games/edit?id=<?= $gameId ?>" method="POST"
@@ -372,18 +405,73 @@ ob_start();
             <input type="hidden" name="points" id="modalPointsInput">
             <input type="hidden" name="redirect_anchor" id="modalRedirectAnchor">
 
+            <!-- Question text + question image -->
             <div>
                 <label class="block text-gray-700 font-bold mb-1"><?= Helpers::t('game.edit.question_text_label') ?></label>
                 <textarea name="question_text" required
                     class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500" rows="3"></textarea>
             </div>
 
+            <div class="border rounded-lg p-3 bg-gray-50">
+                <label class="block text-sm font-bold text-gray-600 mb-2"><?= Helpers::t('game.edit.image_upload_label') ?></label>
+
+                <div id="modalCurrentImage" class="hidden mb-3 border rounded-lg p-3 bg-white">
+                    <p class="text-xs font-bold text-gray-500 mb-2"><?= Helpers::t('game.edit.current_image_label') ?></p>
+                    <div class="flex justify-center mb-2">
+                        <img id="modalCurrentImagePreview" src="" alt=""
+                             class="max-h-48 rounded shadow object-contain"
+                             onerror="this.style.display='none';document.getElementById('modalImgBroken').classList.remove('hidden')">
+                    </div>
+                    <p id="modalImgBroken" class="hidden text-xs text-red-400 text-center mb-2"><?= Helpers::t('game.edit.image_broken') ?></p>
+                    <label class="flex items-center gap-2 cursor-pointer text-red-500 text-sm">
+                        <input type="checkbox" name="clear_image" id="modalClearImage" class="w-4 h-4">
+                        <span><?= Helpers::t('game.edit.clear_image') ?></span>
+                    </label>
+                </div>
+
+                <div id="newImagePreviewContainer" class="hidden mb-3 border border-blue-200 rounded-lg p-3 bg-blue-50">
+                    <div class="flex justify-center">
+                        <img id="newImagePreview" src="" alt="" class="max-h-48 rounded shadow object-contain">
+                    </div>
+                </div>
+
+                <input type="file" name="image" accept="image/*" class="text-sm w-full">
+            </div>
+
+            <!-- Answer text + answer image -->
             <div>
                 <label class="block text-gray-700 font-bold mb-1"><?= Helpers::t('game.edit.answer_text_label') ?></label>
                 <input type="text" name="answer_text" required
                     class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
             </div>
 
+            <div class="border rounded-lg p-3 bg-green-50">
+                <label class="block text-sm font-bold text-gray-600 mb-2"><?= Helpers::t('game.edit.answer_image_upload_label') ?></label>
+
+                <div id="modalCurrentAnswerImage" class="hidden mb-3 border rounded-lg p-3 bg-white">
+                    <p class="text-xs font-bold text-gray-500 mb-2"><?= Helpers::t('game.edit.current_answer_image_label') ?></p>
+                    <div class="flex justify-center mb-2">
+                        <img id="modalCurrentAnswerImagePreview" src="" alt=""
+                             class="max-h-48 rounded shadow object-contain"
+                             onerror="this.style.display='none';document.getElementById('modalAnswerImgBroken').classList.remove('hidden')">
+                    </div>
+                    <p id="modalAnswerImgBroken" class="hidden text-xs text-red-400 text-center mb-2"><?= Helpers::t('game.edit.answer_image_broken') ?></p>
+                    <label class="flex items-center gap-2 cursor-pointer text-red-500 text-sm">
+                        <input type="checkbox" name="clear_answer_image" id="modalClearAnswerImage" class="w-4 h-4">
+                        <span><?= Helpers::t('game.edit.clear_answer_image') ?></span>
+                    </label>
+                </div>
+
+                <div id="newAnswerImagePreviewContainer" class="hidden mb-3 border border-green-200 rounded-lg p-3 bg-white">
+                    <div class="flex justify-center">
+                        <img id="newAnswerImagePreview" src="" alt="" class="max-h-48 rounded shadow object-contain">
+                    </div>
+                </div>
+
+                <input type="file" name="answer_image" accept="image/*" class="text-sm w-full" id="modalAnswerImageInput">
+            </div>
+
+            <!-- Timer, special, youtube -->
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="block text-gray-700 font-bold mb-1"><?= Helpers::t('game.edit.timer_label') ?></label>
@@ -409,47 +497,15 @@ ob_start();
                 <p class="text-sm text-gray-600 mt-2"><?= Helpers::t('game.edit.special_hint') ?></p>
             </div>
 
-            <div class="border-t pt-4">
-                <h4 class="font-bold text-gray-700 mb-2"><?= Helpers::t('game.edit.media_heading') ?></h4>
-
-                <div id="modalCurrentImage" class="hidden mb-3 border rounded-lg p-3 bg-gray-50">
-                    <p class="text-xs font-bold text-gray-500 mb-2"><?= Helpers::t('game.edit.current_image_label') ?></p>
-                    <div class="flex justify-center mb-2">
-                        <img id="modalCurrentImagePreview" src="" alt=""
-                             class="max-h-64 rounded shadow object-contain"
-                             onerror="this.style.display='none';document.getElementById('modalImgBroken').classList.remove('hidden')">
-                    </div>
-                    <p id="modalImgBroken" class="hidden text-xs text-red-400 text-center mb-2"><?= Helpers::t('game.edit.image_broken') ?></p>
-                    <label class="flex items-center gap-2 cursor-pointer text-red-500 text-sm">
-                        <input type="checkbox" name="clear_image" id="modalClearImage" class="w-4 h-4">
-                        <span><?= Helpers::t('game.edit.clear_image') ?></span>
-                    </label>
-                </div>
-
-                <div id="newImagePreviewContainer" class="hidden mb-3 border border-blue-200 rounded-lg p-3 bg-blue-50">
-                    <p class="text-xs font-bold text-blue-500 mb-2">Новое изображение:</p>
-                    <div class="flex justify-center">
-                        <img id="newImagePreview" src="" alt="" class="max-h-64 rounded shadow object-contain">
-                    </div>
-                </div>
-
-                <div id="modalCurrentVideo" class="hidden mb-3 border rounded-lg p-3 bg-gray-50">
+            <div>
+                <label class="block text-sm text-gray-600 mb-1"><?= Helpers::t('game.edit.youtube_label') ?></label>
+                <div id="modalCurrentVideo" class="hidden mb-2 border rounded-lg p-3 bg-gray-50">
                     <p class="text-xs font-bold text-gray-500 mb-1"><?= Helpers::t('game.edit.current_video_label') ?></p>
                     <p id="modalCurrentVideoId" class="text-sm text-gray-700 font-mono"></p>
                     <p class="text-xs text-gray-400 mt-1"><?= Helpers::t('game.edit.video_replace_hint') ?></p>
                 </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm text-gray-600 mb-1"><?= Helpers::t('game.edit.image_upload_label') ?></label>
-                        <input type="file" name="image" accept="image/*" class="text-sm">
-                    </div>
-                    <div>
-                        <label class="block text-sm text-gray-600 mb-1"><?= Helpers::t('game.edit.youtube_label') ?></label>
-                        <input type="url" name="video_url" placeholder="https://youtube.com/..."
-                            class="w-full px-4 py-2 border rounded-lg text-sm">
-                    </div>
-                </div>
+                <input type="url" name="video_url" placeholder="https://youtube.com/..."
+                    class="w-full px-4 py-2 border rounded-lg text-sm">
             </div>
 
             <div class="pt-4">
@@ -484,6 +540,10 @@ function openQuestionModal(catId, points) {
     document.getElementById('newImagePreviewContainer').classList.add('hidden');
     document.getElementById('newImagePreview').src = '';
     document.querySelector('#questionModal input[name="image"]').value = '';
+    document.getElementById('modalCurrentAnswerImage').classList.add('hidden');
+    document.getElementById('newAnswerImagePreviewContainer').classList.add('hidden');
+    document.getElementById('newAnswerImagePreview').src = '';
+    document.getElementById('modalAnswerImageInput').value = '';
     document.getElementById('modalTitleText').innerText = JS_MODAL_ADD_TITLE;
     document.getElementById('questionModal').classList.remove('hidden');
     document.getElementById('questionModal').classList.add('flex');
@@ -529,6 +589,22 @@ function openEditModal(q) {
     document.getElementById('newImagePreviewContainer').classList.add('hidden');
     document.getElementById('newImagePreview').src = '';
     document.querySelector('#questionModal input[name="image"]').value = '';
+
+    const answerImgBlock = document.getElementById('modalCurrentAnswerImage');
+    const answerImgPreview = document.getElementById('modalCurrentAnswerImagePreview');
+    const answerImgBroken = document.getElementById('modalAnswerImgBroken');
+    if (q.answer_image_url) {
+        answerImgPreview.style.display = '';
+        answerImgPreview.src = '/storage/images/' + q.answer_image_url;
+        answerImgBroken.classList.add('hidden');
+        document.getElementById('modalClearAnswerImage').checked = false;
+        answerImgBlock.classList.remove('hidden');
+    } else {
+        answerImgBlock.classList.add('hidden');
+    }
+    document.getElementById('newAnswerImagePreviewContainer').classList.add('hidden');
+    document.getElementById('newAnswerImagePreview').src = '';
+    document.getElementById('modalAnswerImageInput').value = '';
     document.getElementById('modalTitleText').innerText = JS_MODAL_EDIT_TITLE;
     document.getElementById('questionModal').classList.remove('hidden');
     document.getElementById('questionModal').classList.add('flex');
@@ -549,6 +625,23 @@ document.querySelector('#questionModal input[name="image"]').addEventListener('c
     const file = this.files[0];
     const container = document.getElementById('newImagePreviewContainer');
     const preview = document.getElementById('newImagePreview');
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = e => {
+            preview.src = e.target.result;
+            container.classList.remove('hidden');
+        };
+        reader.readAsDataURL(file);
+    } else {
+        container.classList.add('hidden');
+        preview.src = '';
+    }
+});
+
+document.getElementById('modalAnswerImageInput').addEventListener('change', function () {
+    const file = this.files[0];
+    const container = document.getElementById('newAnswerImagePreviewContainer');
+    const preview = document.getElementById('newAnswerImagePreview');
     if (file) {
         const reader = new FileReader();
         reader.onload = e => {

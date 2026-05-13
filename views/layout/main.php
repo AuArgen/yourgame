@@ -7,7 +7,7 @@ $switchLocale  = $currentLocale === 'ru' ? 'ky' : 'ru';
 $switchLabel   = Helpers::t('nav.lang_label');
 $currentPath   = strtok($_SERVER['REQUEST_URI'], '?');
 $switchParams  = array_merge($_GET ?? [], ['setlang' => $switchLocale]);
-$switchUrl     = $currentPath . '?' . http_build_query($switchParams);
+$switchUrl     = $currentPath . 'vj?' . http_build_query($switchParams);
 ?>
 <!DOCTYPE html>
 <html lang="<?= $currentLocale ?>">
@@ -58,7 +58,8 @@ $switchUrl     = $currentPath . '?' . http_build_query($switchParams);
     </main>
 
     <footer class="container mx-auto text-center mt-12 py-6 text-gray-500 text-sm">
-        &copy; <?= date('Y') ?> <?= Helpers::t('footer.text') ?>
+        <p>&copy; <?= date('Y') ?> <?= Helpers::t('footer.text') ?></p>
+        <p class="mt-1"><?= Helpers::t('footer.sponsor') ?></p>
     </footer>
 
 </body>
