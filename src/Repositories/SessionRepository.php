@@ -70,6 +70,11 @@ class SessionRepository {
         return $stmt->execute(['id' => $id]);
     }
 
+    public function setFinalCategory($id, $categoryId) {
+        $stmt = $this->db->prepare("UPDATE game_sessions SET final_category_id = :cat_id WHERE id = :id");
+        return $stmt->execute(['id' => $id, 'cat_id' => $categoryId]);
+    }
+
     public function addParticipant($sessionId, $name) {
         $stmt = $this->db->prepare("INSERT INTO participants (session_id, name) VALUES (:session_id, :name) RETURNING id");
         $stmt->execute(['session_id' => $sessionId, 'name' => $name]);

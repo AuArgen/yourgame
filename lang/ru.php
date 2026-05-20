@@ -68,6 +68,10 @@ return [
     'dashboard.questions'       => 'Вопросов:',
     'dashboard.play_btn'        => 'Играть',
     'dashboard.edit_btn'        => 'Редактировать',
+    'dashboard.rename_save'     => 'Сохранить',
+    'dashboard.rename_cancel'   => 'Отмена',
+    'dashboard.rename_success'  => 'Название изменено.',
+    'dashboard.rename_error'    => 'Не удалось изменить название.',
 
     // History
     'history.page_title'     => 'История — Своя Игра',
@@ -179,6 +183,9 @@ return [
     'game.play.confirm_yes'       => 'Да',
     'game.play.confirm_no'        => 'Нет',
     'game.play.no_active_round'   => 'В сессии нет активного раунда.',
+    'game.play.final_round_title' => 'ФИНАЛЬНЫЙ РАУНД',
+    'game.play.final_round_desc'  => 'Выберите одну категорию для финала',
+    'game.play.final_round_pick'  => 'Выбрать',
 
     // Game summary
     'game.summary.page_title'    => 'Итоги игры — Своя Игра',

@@ -70,6 +70,24 @@ if (preg_match('#^/storage/images/([A-Za-z0-9_.-]+)$#', $uri, $m)) {
     exit;
 }
 
+// Serve round audio files
+if (preg_match('#^/storage/raund_audio/([A-Za-z0-9_.-]+)$#', $uri, $m)) {
+    $path = __DIR__ . '/../storage/raund_audio/' . $m[1];
+    if (is_file($path)) {
+        $mime = (new \finfo(FILEINFO_MIME_TYPE))->file($path);
+        $allowed = ['audio/mpeg', 'audio/mp3', 'audio/ogg', 'audio/wav', 'video/mpeg'];
+        if (in_array($mime, $allowed, true) || str_ends_with(strtolower($m[1]), '.mpeg') || str_ends_with(strtolower($m[1]), '.mp3')) {
+            header('Content-Type: audio/mpeg');
+            header('Content-Length: ' . filesize($path));
+            header('Accept-Ranges: bytes');
+            readfile($path);
+            exit;
+        }
+    }
+    http_response_code(404);
+    exit;
+}
+
 // Простой роутинг
 switch ($uri) {
     case '/':
@@ -120,6 +138,13 @@ switch ($uri) {
             \App\Helpers::redirect('/login');
         }
         include __DIR__ . '/../views/dashboard/games/delete.php';
+        break;
+
+    case '/dashboard/games/rename':
+        if (!isset($_SESSION['user_id'])) {
+            \App\Helpers::redirect('/login');
+        }
+        include __DIR__ . '/../views/dashboard/games/rename.php';
         break;
 
     case '/game/start':

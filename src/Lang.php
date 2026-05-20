@@ -8,11 +8,9 @@ class Lang {
 
     public static function setLocale(string $locale): void {
         $locale = in_array($locale, ['ru', 'ky'], true) ? $locale : 'ru';
-        if ($locale !== self::$locale || empty(self::$strings)) {
-            self::$locale = $locale;
-            self::$strings = [];
-            self::load();
-        }
+        self::$locale = $locale;
+        self::$strings = [];
+        self::load();
     }
 
     public static function getLocale(): string {

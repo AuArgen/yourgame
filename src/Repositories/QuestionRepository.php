@@ -84,7 +84,7 @@ class QuestionRepository {
                 r.id as round_id, r.name as round_name, r.sort_order as round_sort,
                 c.id as category_id, c.name as category_name, c.sort_order as cat_sort,
                 q.id as question_id, q.question_text, q.answer_text, q.points,
-                q.is_cat_in_bag, q.special_type, q.time_limit, q.image_url, q.answer_image_url, q.video_url, q.sort_order as q_sort
+                q.is_cat_in_bag, q.special_type, q.time_limit, q.image_url, q.answer_image_url, q.video_url, q.answer_video_url, q.sort_order as q_sort
             FROM rounds r
             JOIN categories c ON c.round_id = r.id
             LEFT JOIN questions q ON c.id = q.category_id
@@ -101,7 +101,7 @@ class QuestionRepository {
             SELECT
                 c.id as category_id, c.name as category_name, c.sort_order as cat_sort,
                 q.id as question_id, q.question_text, q.answer_text, q.points,
-                q.is_cat_in_bag, q.special_type, q.time_limit, q.image_url, q.answer_image_url, q.video_url, q.sort_order as q_sort
+                q.is_cat_in_bag, q.special_type, q.time_limit, q.image_url, q.answer_image_url, q.video_url, q.answer_video_url, q.sort_order as q_sort
             FROM categories c
             LEFT JOIN questions q ON c.id = q.category_id
             WHERE c.round_id = :round_id

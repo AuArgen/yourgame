@@ -161,6 +161,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 Helpers::redirect("/game/summary?session_id=" . $sessionId);
             }
 
+        } elseif ($action === 'select_final_category' && empty($session['active_question_id'])) {
+            $catId = (int) ($_POST['category_id'] ?? 0);
+            if ($catId) {
+                $sessionRepo->setFinalCategory($sessionId, $catId);
+            }
+
         } elseif ($action === 'finish') {
             $sessionRepo->clearActiveQuestion($sessionId);
             unset($_SESSION['q_started'][$sessionId]);
@@ -221,6 +227,14 @@ foreach ($roundData as $row) {
     }
 }
 
+$isLastRound   = ($roundNumber === $totalRounds && $totalRounds >= 1);
+$finalCategoryId = $isLastRound ? (int) ($session['final_category_id'] ?? 0) : 0;
+
+// Filter categories to the selected final category if one has been chosen
+if ($finalCategoryId && isset($categories[$finalCategoryId])) {
+    $categories = [$finalCategoryId => $categories[$finalCategoryId]];
+}
+
 $activeQuestionSpecialType = $activeQuestion ? $resolveSpecialType($activeQuestion) : 'normal';
 $catTypes = ['cat_choose_player', 'cat_gift', 'cat_penalty'];
 $activeQuestionIsCat = in_array($activeQuestionSpecialType, $catTypes, true);
@@ -235,6 +249,7 @@ if ($activeQuestion && !empty($_SESSION['q_started'][$sessionId])) {
     $timerSeconds = max(0, $timerSeconds - $elapsed);
 }
 
+$showFinalCatPick = $isLastRound && !$finalCategoryId && !$activeQuestion;
 $showCatSelection = $activeQuestion && $activeQuestionIsCat && !$catTargetParticipant;
 $showGiftModal    = $activeQuestion && $activeQuestionSpecialType === 'cat_gift'    && $catTargetParticipant !== null;
 $showPenaltyModal = $activeQuestion && $activeQuestionSpecialType === 'cat_penalty' && $catTargetParticipant !== null;
@@ -346,6 +361,39 @@ ob_start();
     </div>
 </div>
 
+<!-- Final round: category picker -->
+<div id="finalCatModal" class="fixed inset-0 bg-blue-950 bg-opacity-97 <?= $showFinalCatPick ? 'flex' : 'hidden' ?> flex-col items-center justify-center z-50 p-8">
+    <div class="max-w-4xl w-full text-center">
+        <div class="text-yellow-400 font-black text-4xl md:text-5xl tracking-widest mb-3">
+            ⭐ <?= Helpers::t('game.play.final_round_title') ?> ⭐
+        </div>
+        <p class="text-blue-200 text-lg mb-10"><?= Helpers::t('game.play.final_round_desc') ?></p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            <?php
+            $allCatsForFinal = [];
+            foreach ($questionRepo->getFullRoundData($session['current_round_id']) as $row) {
+                $cid = $row['category_id'];
+                if (!isset($allCatsForFinal[$cid])) {
+                    $allCatsForFinal[$cid] = $row['category_name'];
+                }
+            }
+            foreach ($allCatsForFinal as $cid => $cname):
+            ?>
+                <form action="/game/play?session_id=<?= $sessionId ?>" method="POST">
+                    <input type="hidden" name="csrf_token" value="<?= Helpers::generateCsrfToken() ?>">
+                    <input type="hidden" name="action" value="select_final_category">
+                    <input type="hidden" name="category_id" value="<?= (int) $cid ?>">
+                    <button type="submit"
+                        class="w-full bg-blue-800 hover:bg-yellow-500 hover:text-blue-900 text-white font-black text-xl py-8 px-6 rounded-2xl shadow-xl transition-all duration-200 border-2 border-blue-600 hover:border-yellow-400 hover:scale-105">
+                        <?= Helpers::e($cname) ?>
+                    </button>
+                </form>
+            <?php endforeach; ?>
+        </div>
+    </div>
+</div>
+
 <div id="catModal" class="fixed inset-0 bg-blue-950 bg-opacity-95 <?= $showCatSelection ? 'flex' : 'hidden' ?> items-center justify-center z-50 p-4">
     <?php if ($showCatSelection):
         $catCfg = [
@@ -425,76 +473,90 @@ ob_start();
     <?php endif; ?>
 </div>
 
-<div id="qModal" class="fixed inset-0 bg-blue-950 bg-opacity-95 <?= $showQuestionModal ? 'flex' : 'hidden' ?> flex-col items-center justify-center z-50 p-4">
+<div id="qModal" class="fixed inset-0 bg-blue-950 bg-opacity-95 <?= $showQuestionModal ? 'flex' : 'hidden' ?> flex-col items-center justify-start z-50 overflow-y-auto">
     <?php if ($showQuestionModal): ?>
-        <div class="max-w-4xl w-full text-center">
-            <div id="timerDisplay" class="text-6xl font-black text-white mb-8"><?= $timerSeconds ?></div>
+        <?php $hasMedia = !empty($activeQuestion['image_url']) || !empty($activeQuestion['video_url']); ?>
+        <div class="max-w-4xl w-full mx-auto text-center px-3 py-4">
+
+            <div id="timerDisplay" class="text-3xl sm:text-5xl font-black text-white mb-2 sm:mb-4"><?= $timerSeconds ?></div>
 
             <?php if ($activeQuestionIsCat && $catTargetParticipant): ?>
-                <div class="inline-flex items-center gap-2 bg-orange-500 text-white px-5 py-2 rounded-full font-bold mb-6">
+                <div class="inline-flex items-center gap-2 bg-orange-500 text-white px-4 py-1.5 rounded-full font-bold mb-2 sm:mb-4 text-sm">
                     <span><?= Helpers::t('game.play.cat_title') ?></span>
                     <span>•</span>
                     <span><?= Helpers::e($catTargetParticipant['name']) ?> <?= Helpers::t('game.play.cat_answers') ?></span>
                 </div>
             <?php endif; ?>
 
-            <div id="qContent" class="mb-12">
-                <h2 id="qText" class="text-4xl md:text-5xl font-bold text-white leading-tight mb-8">
+            <div id="qContent" class="mb-4 sm:mb-6">
+                <h2 id="qText" class="font-bold text-white leading-tight mb-3 <?= $hasMedia ? 'text-lg sm:text-2xl' : 'text-2xl sm:text-4xl md:text-5xl' ?>">
                     <?= Helpers::e($activeQuestion['question_text']) ?>
                 </h2>
-                <div id="qMedia" class="flex justify-center mb-8">
-                    <?php if (!empty($activeQuestion['image_url'])): ?>
-                        <img src="/storage/images/<?= Helpers::e($activeQuestion['image_url']) ?>" class="max-h-80 rounded-lg shadow-lg">
-                    <?php elseif (!empty($activeQuestion['video_url'])): ?>
-                        <iframe width="560" height="315"
-                            src="https://www.youtube.com/embed/<?= Helpers::e($activeQuestion['video_url']) ?>?autoplay=1"
-                            frameborder="0"
-                            allow="autoplay; encrypted-media"
-                            allowfullscreen></iframe>
-                    <?php endif; ?>
+
+                <?php if (!empty($activeQuestion['image_url'])): ?>
+                <div class="flex justify-center mb-3">
+                    <img src="/storage/images/<?= Helpers::e($activeQuestion['image_url']) ?>"
+                         class="rounded-xl shadow-2xl object-contain w-full"
+                         style="max-height: <?= $hasMedia && !empty($activeQuestion['video_url']) ? '30vh' : '50vh' ?>">
                 </div>
+                <?php endif; ?>
+
+                <?php if (!empty($activeQuestion['video_url'])): ?>
+                <div class="mb-3" style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:12px;">
+                    <iframe style="position:absolute;top:0;left:0;width:100%;height:100%;"
+                        src="https://www.youtube.com/embed/<?= Helpers::e($activeQuestion['video_url']) ?>?autoplay=1"
+                        frameborder="0"
+                        allow="autoplay; encrypted-media"
+                        allowfullscreen></iframe>
+                </div>
+                <?php endif; ?>
             </div>
 
-            <div id="qControls" class="space-y-8">
+            <div id="qControls">
                 <button type="button" onclick="showAnswer()" id="showBtn"
-                    class="bg-yellow-500 text-blue-900 px-12 py-4 rounded-full text-2xl font-black hover:bg-yellow-400 transition shadow-xl">
+                    class="bg-yellow-500 text-blue-900 px-8 sm:px-12 py-3 sm:py-4 rounded-full text-lg sm:text-2xl font-black hover:bg-yellow-400 transition shadow-xl mb-4">
                     <?= Helpers::t('game.play.show_answer_btn') ?>
                 </button>
 
                 <div id="answerSection" class="hidden animate-bounce-in">
-                    <div id="aText" class="text-5xl font-black mb-6" style="color: #FACC15;">
+                    <div id="aText" class="text-2xl sm:text-4xl font-black mb-3 sm:mb-4" style="color: #FACC15;">
                         <?= Helpers::e($activeQuestion['answer_text']) ?>
                     </div>
+
                     <?php if (!empty($activeQuestion['answer_image_url'])): ?>
-                        <div class="flex justify-center mb-10">
+                        <div class="flex justify-center mb-3">
                             <img src="/storage/images/<?= Helpers::e($activeQuestion['answer_image_url']) ?>"
-                                 class="max-h-80 rounded-lg shadow-lg">
+                                 class="rounded-lg shadow-lg object-contain w-full" style="max-height:35vh">
                         </div>
-                    <?php else: ?>
-                        <div class="mb-10"></div>
                     <?php endif; ?>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-5xl mx-auto">
+                    <?php if (!empty($activeQuestion['answer_video_url'])): ?>
+                        <div id="answerVideoContainer"
+                            data-vid="<?= Helpers::e($activeQuestion['answer_video_url']) ?>"
+                            style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:12px;max-width:700px;margin:0 auto 12px;"></div>
+                    <?php endif; ?>
+
+                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 max-w-5xl mx-auto mb-3">
                         <?php foreach ($answerParticipants as $participant): ?>
-                            <div class="bg-blue-800 p-4 rounded-xl flex items-center justify-between gap-2">
-                                <span class="text-white font-bold truncate"><?= Helpers::e($participant['name']) ?></span>
-                                <div class="flex gap-1">
+                            <div class="bg-blue-800 p-2 sm:p-3 rounded-xl flex items-center justify-between gap-1 sm:gap-2">
+                                <span class="text-white font-bold truncate text-sm sm:text-base"><?= Helpers::e($participant['name']) ?></span>
+                                <div class="flex gap-1 shrink-0">
                                     <button type="button" onclick="submitAction('correct', <?= (int) $participant['id'] ?>)"
-                                        class="bg-green-500 p-2 rounded text-white font-bold hover:bg-green-600">+</button>
+                                        class="bg-green-500 w-7 h-7 sm:w-8 sm:h-8 rounded text-white font-black hover:bg-green-600 text-base">+</button>
                                     <button type="button" onclick="submitAction('wrong', <?= (int) $participant['id'] ?>)"
-                                        class="bg-red-500 p-2 rounded text-white font-bold hover:bg-red-600">-</button>
+                                        class="bg-red-500 w-7 h-7 sm:w-8 sm:h-8 rounded text-white font-black hover:bg-red-600 text-base">-</button>
                                 </div>
                             </div>
                         <?php endforeach; ?>
                     </div>
 
-                    <div class="mt-8 flex justify-center gap-8">
+                    <div class="flex justify-center gap-6 pb-4">
                         <?php if (!$activeQuestionIsCat): ?>
-                            <button type="button" onclick="submitAction('skip')" class="text-gray-400 hover:text-white underline">
+                            <button type="button" onclick="submitAction('skip')" class="text-gray-400 hover:text-white underline text-sm">
                                 <?= Helpers::t('game.play.skip_btn') ?>
                             </button>
                         <?php endif; ?>
-                        <button type="button" onclick="cancelQuestion()" class="text-gray-400 hover:text-white underline">
+                        <button type="button" onclick="cancelQuestion()" class="text-gray-400 hover:text-white underline text-sm">
                             <?= Helpers::t('game.play.close_question') ?>
                         </button>
                     </div>
@@ -502,6 +564,68 @@ ob_start();
             </div>
         </div>
     <?php endif; ?>
+</div>
+
+<!-- Audio hint toast -->
+<div id="audioHint" class="fixed top-6 left-1/2 -translate-x-1/2 bg-black bg-opacity-80 text-white text-lg font-bold px-6 py-3 rounded-full z-[200] opacity-0 transition-opacity duration-300 pointer-events-none select-none"></div>
+
+<!-- Floating audio player tab -->
+<button id="audioToggleTab"
+    onclick="toggleAudioPanel()"
+    class="fixed bottom-0 left-6 z-[110] bg-blue-700 hover:bg-blue-600 text-white font-bold px-5 py-2 rounded-t-xl shadow-lg text-sm transition select-none">
+    🎵 ▲
+</button>
+
+<!-- Floating audio player panel -->
+<div id="audioPlayer"
+    class="fixed bottom-0 left-0 right-0 z-[100] bg-gray-900 border-t-2 border-blue-700 shadow-2xl translate-y-full transition-transform duration-300 ease-in-out">
+    <div class="max-w-3xl mx-auto px-4 py-3 flex flex-col gap-2">
+
+        <!-- Top row: title + controls -->
+        <div class="flex items-center gap-3">
+            <span class="text-blue-300 font-bold text-sm whitespace-nowrap">
+                🎵 <?= Helpers::e($currentRound['name'] ?? 'Раунд ' . $roundNumber) ?>
+            </span>
+
+            <!-- Play/Pause -->
+            <button id="playPauseBtn" onclick="toggleAudio()"
+                class="bg-blue-600 hover:bg-blue-500 text-white font-black text-lg w-10 h-10 rounded-full flex items-center justify-center transition shrink-0">
+                ▶
+            </button>
+
+            <!-- Restart -->
+            <button onclick="restartAudio()" title="Restart (R)"
+                class="bg-gray-700 hover:bg-gray-600 text-white text-sm w-8 h-8 rounded-full flex items-center justify-center transition shrink-0">
+                ↺
+            </button>
+
+            <!-- Progress bar -->
+            <div id="progressBar" onclick="seekAudio(event)"
+                class="flex-1 h-2 bg-gray-700 rounded-full cursor-pointer relative overflow-hidden">
+                <div id="audioProgress" class="h-full bg-blue-500 rounded-full transition-all" style="width:0%"></div>
+            </div>
+
+            <!-- Time -->
+            <span id="audioTime" class="text-gray-400 text-xs whitespace-nowrap shrink-0">0:00 / 0:00</span>
+
+            <!-- Mute -->
+            <button id="muteBtn" onclick="toggleMute()" title="Mute (M)"
+                class="text-xl shrink-0 hover:scale-110 transition">🔊</button>
+
+            <!-- Volume slider -->
+            <input id="volSlider" type="range" min="0" max="1" step="0.05" value="0.5"
+                oninput="setVolume(this.value)"
+                class="w-20 accent-blue-500 shrink-0">
+        </div>
+
+        <!-- Keyboard shortcuts hint -->
+        <div class="text-gray-500 text-xs flex gap-4 flex-wrap">
+            <span><kbd class="bg-gray-700 text-gray-300 px-1.5 py-0.5 rounded text-xs">Space</kbd> play/pause</span>
+            <span><kbd class="bg-gray-700 text-gray-300 px-1.5 py-0.5 rounded text-xs">M</kbd> mute</span>
+            <span><kbd class="bg-gray-700 text-gray-300 px-1.5 py-0.5 rounded text-xs">↑↓</kbd> volume</span>
+            <span><kbd class="bg-gray-700 text-gray-300 px-1.5 py-0.5 rounded text-xs">R</kbd> restart</span>
+        </div>
+    </div>
 </div>
 
 <div id="confirmModal" class="fixed inset-0 bg-black bg-opacity-60 hidden items-center justify-center z-50 p-4">
@@ -570,8 +694,10 @@ function closeConfirmModal() {
 
 function confirmModalYes() {
     if (confirmModalTarget === 'nextRound') {
+        sessionStorage.setItem('audioAutoplay', '1');
         document.getElementById('nextRoundForm').submit();
     } else if (confirmModalTarget === 'finish') {
+        sessionStorage.removeItem('audioAutoplay');
         document.getElementById('finishForm').submit();
     }
     closeConfirmModal();
@@ -612,6 +738,16 @@ function showAnswer() {
     document.getElementById('qContent').classList.add('hidden');
     document.getElementById('showBtn').classList.add('hidden');
     document.getElementById('answerSection').classList.remove('hidden');
+    const vc = document.getElementById('answerVideoContainer');
+    if (vc && !vc.hasChildNodes()) {
+        const iframe = document.createElement('iframe');
+        iframe.src = 'https://www.youtube.com/embed/' + vc.dataset.vid + '?autoplay=1';
+        iframe.frameBorder = '0';
+        iframe.allow = 'autoplay; encrypted-media';
+        iframe.allowFullscreen = true;
+        iframe.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;';
+        vc.appendChild(iframe);
+    }
 }
 
 function submitAction(action, participantId = '') {
@@ -635,6 +771,202 @@ document.addEventListener('DOMContentLoaded', function() {
     startTimer(<?= $timerSeconds ?>);
 });
 <?php endif; ?>
+
+// ── Audio Player ──────────────────────────────────────────────────
+const ROUND_AUDIO_SRC = '/storage/raund_audio/raund_<?= $roundNumber ?>.mpeg';
+const ROUND_NUMBER    = <?= $roundNumber ?>;
+const AUDIO_STATE_KEY = 'audioState';
+let audio = null;
+let audioReady = false;
+let audioVisible = false;
+
+function initAudio(restore = null) {
+    if (audio) return;
+    audio = new Audio(ROUND_AUDIO_SRC);
+    audio.loop = true;
+    audio.volume = restore ? (restore.volume ?? 0.5) : 0.5;
+    audio.muted  = restore ? (restore.muted  ?? false) : false;
+
+    audio.addEventListener('loadedmetadata', () => {
+        if (restore && restore.time > 0) {
+            audio.currentTime = restore.time;
+        }
+    });
+
+    audio.addEventListener('canplay', () => {
+        audioReady = true;
+        updateAudioUI();
+    });
+
+    audio.addEventListener('error', () => {
+        document.getElementById('audioPlayer').style.display = 'none';
+        document.getElementById('audioToggleTab').style.display = 'none';
+    });
+
+    audio.addEventListener('timeupdate', updateProgress);
+    audio.addEventListener('play',  updateAudioUI);
+    audio.addEventListener('pause', updateAudioUI);
+    audio.addEventListener('volumechange', updateAudioUI);
+}
+
+// Сохраняем состояние перед любым уходом со страницы
+window.addEventListener('beforeunload', () => {
+    if (!audio) return;
+    sessionStorage.setItem(AUDIO_STATE_KEY, JSON.stringify({
+        round:  ROUND_NUMBER,
+        time:   audio.currentTime,
+        volume: audio.volume,
+        muted:  audio.muted,
+        paused: audio.paused,
+    }));
+});
+
+function toggleAudio() {
+    initAudio();
+    if (audio.paused) {
+        audio.play();
+    } else {
+        audio.pause();
+    }
+}
+
+function toggleMute() {
+    if (!audio) return;
+    audio.muted = !audio.muted;
+    updateAudioUI();
+}
+
+function setVolume(val) {
+    if (!audio) return;
+    audio.volume = Math.min(1, Math.max(0, parseFloat(val)));
+    audio.muted = false;
+    updateAudioUI();
+}
+
+function restartAudio() {
+    if (!audio) return;
+    audio.currentTime = 0;
+    audio.play();
+}
+
+function changeVolume(delta) {
+    if (!audio) { initAudio(); return; }
+    setVolume(audio.volume + delta);
+    document.getElementById('volSlider').value = audio.volume;
+}
+
+function formatTime(s) {
+    if (!isFinite(s)) return '0:00';
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return m + ':' + String(sec).padStart(2, '0');
+}
+
+function updateProgress() {
+    if (!audio) return;
+    const pct = audio.duration ? (audio.currentTime / audio.duration) * 100 : 0;
+    document.getElementById('audioProgress').style.width = pct + '%';
+    document.getElementById('audioTime').textContent =
+        formatTime(audio.currentTime) + ' / ' + formatTime(audio.duration);
+}
+
+function updateAudioUI() {
+    if (!audio) return;
+    const btn = document.getElementById('playPauseBtn');
+    btn.textContent = audio.paused ? '▶' : '⏸';
+    document.getElementById('muteBtn').textContent = (audio.muted || audio.volume === 0) ? '🔇' : '🔊';
+    document.getElementById('volSlider').value = audio.muted ? 0 : audio.volume;
+    updateProgress();
+}
+
+function seekAudio(e) {
+    if (!audio || !audio.duration) return;
+    const bar = document.getElementById('progressBar');
+    const rect = bar.getBoundingClientRect();
+    const pct = (e.clientX - rect.left) / rect.width;
+    audio.currentTime = pct * audio.duration;
+}
+
+function openAudioPanel() {
+    if (audioVisible) return;
+    audioVisible = true;
+    document.getElementById('audioPlayer').classList.remove('translate-y-full');
+    document.getElementById('audioToggleTab').textContent = '🎵 ▼';
+}
+
+function toggleAudioPanel() {
+    audioVisible = !audioVisible;
+    document.getElementById('audioPlayer').classList.toggle('translate-y-full', !audioVisible);
+    document.getElementById('audioToggleTab').textContent = audioVisible ? '🎵 ▼' : '🎵 ▲';
+    if (audioVisible) initAudio();
+}
+
+// Keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+    const tag = document.activeElement.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+    switch (e.code) {
+        case 'Space':
+            e.preventDefault();
+            toggleAudio();
+            showAudioHint('play/pause');
+            break;
+        case 'KeyM':
+            toggleMute();
+            showAudioHint('mute');
+            break;
+        case 'ArrowUp':
+            e.preventDefault();
+            changeVolume(0.1);
+            showAudioHint('volume +');
+            break;
+        case 'ArrowDown':
+            e.preventDefault();
+            changeVolume(-0.1);
+            showAudioHint('volume -');
+            break;
+        case 'KeyR':
+            restartAudio();
+            showAudioHint('restart');
+            break;
+    }
+});
+
+let hintTimer = null;
+function showAudioHint(label) {
+    const el = document.getElementById('audioHint');
+    el.textContent = '🎵 ' + label;
+    el.classList.remove('opacity-0');
+    el.classList.add('opacity-100');
+    clearTimeout(hintTimer);
+    hintTimer = setTimeout(() => {
+        el.classList.remove('opacity-100');
+        el.classList.add('opacity-0');
+    }, 1200);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const isNewRound = sessionStorage.getItem('audioAutoplay') === '1';
+    sessionStorage.removeItem('audioAutoplay');
+
+    let restore = null;
+    if (!isNewRound) {
+        try {
+            const saved = JSON.parse(sessionStorage.getItem(AUDIO_STATE_KEY) || 'null');
+            if (saved && saved.round === ROUND_NUMBER) restore = saved;
+        } catch (_) {}
+    }
+    sessionStorage.removeItem(AUDIO_STATE_KEY);
+
+    initAudio(restore);
+
+    if (restore && restore.paused) {
+        // Аудио было на паузе — не возобновляем
+    } else {
+        audio.play().catch(() => {});
+    }
+});
 </script>
 
 <style>

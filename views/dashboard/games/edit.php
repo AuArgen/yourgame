@@ -98,8 +98,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
             $isCat = $specialType === 'cat_choose_player';
-            $youtube  = trim($_POST['video_url'] ?? '');
-            $youtubeId = $youtube ? Helpers::extractYoutubeId($youtube) : null;
+            $youtube     = trim($_POST['video_url'] ?? '');
+            $youtubeId   = $youtube ? Helpers::extractYoutubeId($youtube) : null;
+            $answerYt    = trim($_POST['answer_video_url'] ?? '');
+            $answerYtId  = $answerYt ? Helpers::extractYoutubeId($answerYt) : null;
 
             $image = null;
             if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
@@ -122,6 +124,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'video_url'        => $youtubeId,
                     'image_url'        => $image,
                     'answer_image_url' => $answerImage,
+                    'answer_video_url' => $answerYtId,
                 ]);
                 $redirectAnchor = "category-$catId";
                 $_SESSION['success'] = Helpers::t('game.edit.question_added');
@@ -140,7 +143,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
             $isCat = $specialType === 'cat_choose_player';
-            $youtube = trim($_POST['video_url'] ?? '');
+            $youtube    = trim($_POST['video_url'] ?? '');
+            $answerYt   = trim($_POST['answer_video_url'] ?? '');
 
             $question = $questionRepo->findById($qId);
             if ($question && !empty($text) && !empty($answer)) {
@@ -153,6 +157,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ];
                 if ($youtube !== '') {
                     $updateData['video_url'] = Helpers::extractYoutubeId($youtube);
+                }
+                if (isset($_POST['clear_video'])) {
+                    $updateData['video_url'] = null;
+                }
+                if ($answerYt !== '') {
+                    $updateData['answer_video_url'] = Helpers::extractYoutubeId($answerYt);
+                }
+                if (isset($_POST['clear_answer_video'])) {
+                    $updateData['answer_video_url'] = null;
                 }
                 if (isset($_POST['clear_image'])) {
                     $updateData['image_url'] = null;
@@ -330,17 +343,19 @@ ob_start();
                                                 <div class="font-bold text-base mb-1 <?= $q ? 'text-blue-700' : 'text-gray-400' ?>"><?= $p ?></div>
                                                 <?php if ($q): ?>
                                                     <div class="text-xs text-gray-600 truncate mb-1"><?= Helpers::e($q['question_text']) ?></div>
-                                                    <?php if (!empty($q['image_url']) || !empty($q['answer_image_url'])): ?>
-                                                        <div class="flex justify-center gap-1 mb-1">
+                                                    <?php if (!empty($q['image_url']) || !empty($q['answer_image_url']) || !empty($q['video_url']) || !empty($q['answer_video_url'])): ?>
+                                                        <div class="flex flex-wrap justify-center gap-1 mb-1">
                                                             <?php if (!empty($q['image_url'])): ?>
-                                                                <span class="inline-flex items-center gap-0.5 text-[9px] font-bold bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded" title="Есть фото вопроса">
-                                                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-2.5 h-2.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd"/></svg>Q
-                                                                </span>
+                                                                <span class="inline-flex items-center gap-0.5 text-[9px] font-bold bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded" title="Фото вопроса">🖼 Q</span>
+                                                            <?php endif; ?>
+                                                            <?php if (!empty($q['video_url'])): ?>
+                                                                <span class="inline-flex items-center gap-0.5 text-[9px] font-bold bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded" title="Видео вопроса">▶ Q</span>
                                                             <?php endif; ?>
                                                             <?php if (!empty($q['answer_image_url'])): ?>
-                                                                <span class="inline-flex items-center gap-0.5 text-[9px] font-bold bg-green-100 text-green-600 px-1.5 py-0.5 rounded" title="Есть фото ответа">
-                                                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-2.5 h-2.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd"/></svg>A
-                                                                </span>
+                                                                <span class="inline-flex items-center gap-0.5 text-[9px] font-bold bg-green-100 text-green-600 px-1.5 py-0.5 rounded" title="Фото ответа">🖼 A</span>
+                                                            <?php endif; ?>
+                                                            <?php if (!empty($q['answer_video_url'])): ?>
+                                                                <span class="inline-flex items-center gap-0.5 text-[9px] font-bold bg-green-100 text-green-700 px-1.5 py-0.5 rounded" title="Видео ответа">▶ A</span>
                                                             <?php endif; ?>
                                                         </div>
                                                     <?php endif; ?>
@@ -360,6 +375,7 @@ ob_start();
                                                                 'image_url'        => $q['image_url'] ?? null,
                                                                 'answer_image_url' => $q['answer_image_url'] ?? null,
                                                                 'video_url'        => $q['video_url'] ?? null,
+                                                                'answer_video_url' => $q['answer_video_url'] ?? null,
                                                                 'catId'            => $catId,
                                                                 'points'           => $p,
                                                             ]), ENT_QUOTES) ?>)"
@@ -405,73 +421,161 @@ ob_start();
             <input type="hidden" name="points" id="modalPointsInput">
             <input type="hidden" name="redirect_anchor" id="modalRedirectAnchor">
 
-            <!-- Question text + question image -->
-            <div>
-                <label class="block text-gray-700 font-bold mb-1"><?= Helpers::t('game.edit.question_text_label') ?></label>
-                <textarea name="question_text" required
-                    class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500" rows="3"></textarea>
-            </div>
-
-            <div class="border rounded-lg p-3 bg-gray-50">
-                <label class="block text-sm font-bold text-gray-600 mb-2"><?= Helpers::t('game.edit.image_upload_label') ?></label>
-
-                <div id="modalCurrentImage" class="hidden mb-3 border rounded-lg p-3 bg-white">
-                    <p class="text-xs font-bold text-gray-500 mb-2"><?= Helpers::t('game.edit.current_image_label') ?></p>
-                    <div class="flex justify-center mb-2">
-                        <img id="modalCurrentImagePreview" src="" alt=""
-                             class="max-h-48 rounded shadow object-contain"
-                             onerror="this.style.display='none';document.getElementById('modalImgBroken').classList.remove('hidden')">
-                    </div>
-                    <p id="modalImgBroken" class="hidden text-xs text-red-400 text-center mb-2"><?= Helpers::t('game.edit.image_broken') ?></p>
-                    <label class="flex items-center gap-2 cursor-pointer text-red-500 text-sm">
-                        <input type="checkbox" name="clear_image" id="modalClearImage" class="w-4 h-4">
-                        <span><?= Helpers::t('game.edit.clear_image') ?></span>
-                    </label>
+            <!-- ═══ ВОПРОС ═══ -->
+            <div class="border-2 border-blue-300 rounded-xl p-4 bg-blue-50 space-y-3">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="bg-blue-600 text-white text-xs font-black px-3 py-1 rounded-full uppercase tracking-wide">Вопрос</span>
                 </div>
 
-                <div id="newImagePreviewContainer" class="hidden mb-3 border border-blue-200 rounded-lg p-3 bg-blue-50">
-                    <div class="flex justify-center">
-                        <img id="newImagePreview" src="" alt="" class="max-h-48 rounded shadow object-contain">
-                    </div>
+                <div>
+                    <label class="block text-gray-700 font-bold mb-1"><?= Helpers::t('game.edit.question_text_label') ?></label>
+                    <textarea name="question_text" required
+                        class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 bg-white" rows="3"></textarea>
                 </div>
 
-                <input type="file" name="image" accept="image/*" class="text-sm w-full">
-            </div>
+                <!-- Question image -->
+                <div class="border rounded-lg p-3 bg-white">
+                    <label class="block text-sm font-bold text-blue-700 mb-2">🖼 <?= Helpers::t('game.edit.image_upload_label') ?></label>
 
-            <!-- Answer text + answer image -->
-            <div>
-                <label class="block text-gray-700 font-bold mb-1"><?= Helpers::t('game.edit.answer_text_label') ?></label>
-                <input type="text" name="answer_text" required
-                    class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
-            </div>
-
-            <div class="border rounded-lg p-3 bg-green-50">
-                <label class="block text-sm font-bold text-gray-600 mb-2"><?= Helpers::t('game.edit.answer_image_upload_label') ?></label>
-
-                <div id="modalCurrentAnswerImage" class="hidden mb-3 border rounded-lg p-3 bg-white">
-                    <p class="text-xs font-bold text-gray-500 mb-2"><?= Helpers::t('game.edit.current_answer_image_label') ?></p>
-                    <div class="flex justify-center mb-2">
-                        <img id="modalCurrentAnswerImagePreview" src="" alt=""
-                             class="max-h-48 rounded shadow object-contain"
-                             onerror="this.style.display='none';document.getElementById('modalAnswerImgBroken').classList.remove('hidden')">
+                    <div id="modalCurrentImage" class="hidden mb-3 border rounded-lg p-3 bg-blue-50">
+                        <p class="text-xs font-bold text-gray-500 mb-2"><?= Helpers::t('game.edit.current_image_label') ?></p>
+                        <div class="flex justify-center mb-2">
+                            <img id="modalCurrentImagePreview" src="" alt=""
+                                 class="max-h-48 rounded shadow object-contain"
+                                 onerror="this.style.display='none';document.getElementById('modalImgBroken').classList.remove('hidden')">
+                        </div>
+                        <p id="modalImgBroken" class="hidden text-xs text-red-400 text-center mb-2"><?= Helpers::t('game.edit.image_broken') ?></p>
+                        <label class="flex items-center gap-2 cursor-pointer text-red-500 text-sm">
+                            <input type="checkbox" name="clear_image" id="modalClearImage" class="w-4 h-4">
+                            <span><?= Helpers::t('game.edit.clear_image') ?></span>
+                        </label>
                     </div>
-                    <p id="modalAnswerImgBroken" class="hidden text-xs text-red-400 text-center mb-2"><?= Helpers::t('game.edit.answer_image_broken') ?></p>
-                    <label class="flex items-center gap-2 cursor-pointer text-red-500 text-sm">
-                        <input type="checkbox" name="clear_answer_image" id="modalClearAnswerImage" class="w-4 h-4">
-                        <span><?= Helpers::t('game.edit.clear_answer_image') ?></span>
-                    </label>
+
+                    <div id="newImagePreviewContainer" class="hidden mb-3 border border-blue-200 rounded-lg p-3 bg-blue-50">
+                        <div class="flex justify-center">
+                            <img id="newImagePreview" src="" alt="" class="max-h-48 rounded shadow object-contain">
+                        </div>
+                    </div>
+
+                    <input type="file" name="image" accept="image/*" class="text-sm w-full">
                 </div>
 
-                <div id="newAnswerImagePreviewContainer" class="hidden mb-3 border border-green-200 rounded-lg p-3 bg-white">
-                    <div class="flex justify-center">
-                        <img id="newAnswerImagePreview" src="" alt="" class="max-h-48 rounded shadow object-contain">
+                <!-- Question video -->
+                <div class="border rounded-lg p-3 bg-white">
+                    <label class="block text-sm font-bold text-blue-700 mb-2">▶ <?= Helpers::t('game.edit.youtube_label') ?></label>
+
+                    <div id="modalCurrentVideo" class="hidden mb-3 border rounded-lg overflow-hidden">
+                        <div class="bg-gray-100 px-3 py-1 flex justify-between items-center">
+                            <span class="text-xs font-bold text-gray-500"><?= Helpers::t('game.edit.current_video_label') ?></span>
+                            <label class="flex items-center gap-1 cursor-pointer text-red-500 text-xs">
+                                <input type="checkbox" name="clear_video" id="modalClearVideo" class="w-3 h-3">
+                                <span>Удалить</span>
+                            </label>
+                        </div>
+                        <div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;">
+                            <iframe id="modalCurrentVideoFrame" src="" frameborder="0"
+                                allow="encrypted-media" allowfullscreen
+                                style="position:absolute;top:0;left:0;width:100%;height:100%;"></iframe>
+                        </div>
+                    </div>
+
+                    <input type="url" name="video_url" id="modalVideoUrlInput" placeholder="https://youtube.com/..."
+                        class="w-full px-4 py-2 border rounded-lg text-sm bg-white"
+                        oninput="previewVideoUrl(this.value, 'modalNewVideoPreview', 'modalNewVideoContainer')">
+
+                    <div id="modalNewVideoContainer" class="hidden mt-3 border rounded-lg overflow-hidden">
+                        <div class="bg-blue-50 px-3 py-1 text-xs font-bold text-blue-600">Превью нового видео</div>
+                        <div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;">
+                            <iframe id="modalNewVideoPreview" src="" frameborder="0"
+                                allow="encrypted-media" allowfullscreen
+                                style="position:absolute;top:0;left:0;width:100%;height:100%;"></iframe>
+                        </div>
                     </div>
                 </div>
-
-                <input type="file" name="answer_image" accept="image/*" class="text-sm w-full" id="modalAnswerImageInput">
             </div>
 
-            <!-- Timer, special, youtube -->
+            <!-- ═══ ОТВЕТ ═══ -->
+            <div class="border-2 border-green-300 rounded-xl p-4 bg-green-50 space-y-3">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="bg-green-600 text-white text-xs font-black px-3 py-1 rounded-full uppercase tracking-wide">Ответ</span>
+                </div>
+
+                <div>
+                    <label class="block text-gray-700 font-bold mb-1"><?= Helpers::t('game.edit.answer_text_label') ?></label>
+                    <input type="text" name="answer_text" required
+                        class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 bg-white">
+                </div>
+
+                <!-- Answer image -->
+                <div class="border rounded-lg p-3 bg-white">
+                    <label class="block text-sm font-bold text-green-700 mb-2">🖼 <?= Helpers::t('game.edit.answer_image_upload_label') ?></label>
+
+                    <div id="modalCurrentAnswerImage" class="hidden mb-3 border rounded-lg p-3 bg-green-50">
+                        <p class="text-xs font-bold text-gray-500 mb-2"><?= Helpers::t('game.edit.current_answer_image_label') ?></p>
+                        <div class="flex justify-center mb-2">
+                            <img id="modalCurrentAnswerImagePreview" src="" alt=""
+                                 class="max-h-48 rounded shadow object-contain"
+                                 onerror="this.style.display='none';document.getElementById('modalAnswerImgBroken').classList.remove('hidden')">
+                        </div>
+                        <p id="modalAnswerImgBroken" class="hidden text-xs text-red-400 text-center mb-2"><?= Helpers::t('game.edit.answer_image_broken') ?></p>
+                        <label class="flex items-center gap-2 cursor-pointer text-red-500 text-sm">
+                            <input type="checkbox" name="clear_answer_image" id="modalClearAnswerImage" class="w-4 h-4">
+                            <span><?= Helpers::t('game.edit.clear_answer_image') ?></span>
+                        </label>
+                    </div>
+
+                    <div id="newAnswerImagePreviewContainer" class="hidden mb-3 border border-green-200 rounded-lg p-3 bg-green-50">
+                        <div class="flex justify-center">
+                            <img id="newAnswerImagePreview" src="" alt="" class="max-h-48 rounded shadow object-contain">
+                        </div>
+                    </div>
+
+                    <input type="file" name="answer_image" accept="image/*" class="text-sm w-full" id="modalAnswerImageInput">
+                </div>
+
+                <!-- Answer video -->
+                <div class="border rounded-lg p-3 bg-white">
+                    <label class="block text-sm font-bold text-green-700 mb-2">▶ Видео ответа (YouTube)</label>
+
+                    <div id="modalCurrentAnswerVideo" class="hidden mb-3 border rounded-lg overflow-hidden">
+                        <div class="bg-gray-100 px-3 py-1 flex justify-between items-center">
+                            <span class="text-xs font-bold text-gray-500">Текущее видео ответа</span>
+                            <label class="flex items-center gap-1 cursor-pointer text-red-500 text-xs">
+                                <input type="checkbox" name="clear_answer_video" id="modalClearAnswerVideo" class="w-3 h-3">
+                                <span>Удалить</span>
+                            </label>
+                        </div>
+                        <div id="modalAnswerVideoThumb" class="relative cursor-pointer bg-black" onclick="expandAnswerVideo()">
+                            <img id="modalAnswerVideoThumbImg" src="" alt="" class="w-full block">
+                            <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                <div class="bg-black bg-opacity-60 rounded-full w-14 h-14 flex items-center justify-center">
+                                    <span class="text-white text-3xl leading-none">▶</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="modalAnswerVideoFull" class="hidden" style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;">
+                            <iframe id="modalCurrentAnswerVideoFrame" src="" frameborder="0"
+                                allow="autoplay; encrypted-media" allowfullscreen
+                                style="position:absolute;top:0;left:0;width:100%;height:100%;"></iframe>
+                        </div>
+                    </div>
+
+                    <input type="url" name="answer_video_url" id="modalAnswerVideoUrlInput" placeholder="https://youtube.com/..."
+                        class="w-full px-4 py-2 border rounded-lg text-sm bg-white"
+                        oninput="previewVideoUrl(this.value, 'modalNewAnswerVideoPreview', 'modalNewAnswerVideoContainer')">
+
+                    <div id="modalNewAnswerVideoContainer" class="hidden mt-3 border rounded-lg overflow-hidden">
+                        <div class="bg-green-50 px-3 py-1 text-xs font-bold text-green-600">Превью нового видео</div>
+                        <div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;">
+                            <iframe id="modalNewAnswerVideoPreview" src="" frameborder="0"
+                                allow="encrypted-media" allowfullscreen
+                                style="position:absolute;top:0;left:0;width:100%;height:100%;"></iframe>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Timer + special -->
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="block text-gray-700 font-bold mb-1"><?= Helpers::t('game.edit.timer_label') ?></label>
@@ -497,17 +601,6 @@ ob_start();
                 <p class="text-sm text-gray-600 mt-2"><?= Helpers::t('game.edit.special_hint') ?></p>
             </div>
 
-            <div>
-                <label class="block text-sm text-gray-600 mb-1"><?= Helpers::t('game.edit.youtube_label') ?></label>
-                <div id="modalCurrentVideo" class="hidden mb-2 border rounded-lg p-3 bg-gray-50">
-                    <p class="text-xs font-bold text-gray-500 mb-1"><?= Helpers::t('game.edit.current_video_label') ?></p>
-                    <p id="modalCurrentVideoId" class="text-sm text-gray-700 font-mono"></p>
-                    <p class="text-xs text-gray-400 mt-1"><?= Helpers::t('game.edit.video_replace_hint') ?></p>
-                </div>
-                <input type="url" name="video_url" placeholder="https://youtube.com/..."
-                    class="w-full px-4 py-2 border rounded-lg text-sm">
-            </div>
-
             <div class="pt-4">
                 <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition">
                     <?= Helpers::t('game.edit.save_btn') ?>
@@ -521,6 +614,58 @@ ob_start();
 const JS_MODAL_ADD_TITLE  = <?= json_encode(Helpers::t('game.edit.modal_add_title')) ?>;
 const JS_MODAL_EDIT_TITLE = <?= json_encode(Helpers::t('game.edit.modal_edit_title')) ?>;
 
+function extractYoutubeId(url) {
+    if (!url) return null;
+    const m = url.match(/(?:youtu\.be\/|[?&]v=|\/embed\/|\/shorts\/)([A-Za-z0-9_-]{11})/);
+    return m ? m[1] : null;
+}
+
+function previewVideoUrl(url, frameId, containerId) {
+    const id = extractYoutubeId(url);
+    const container = document.getElementById(containerId);
+    const frame = document.getElementById(frameId);
+    if (id) {
+        frame.src = `https://www.youtube.com/embed/${id}`;
+        container.classList.remove('hidden');
+    } else {
+        frame.src = '';
+        container.classList.add('hidden');
+    }
+}
+
+function expandAnswerVideo() {
+    const src = document.getElementById('modalAnswerVideoThumbImg').src;
+    const m = src.match(/\/vi\/([A-Za-z0-9_-]{11})\//);
+    if (!m) return;
+    document.getElementById('modalCurrentAnswerVideoFrame').src = `https://www.youtube.com/embed/${m[1]}?autoplay=1`;
+    document.getElementById('modalAnswerVideoThumb').classList.add('hidden');
+    document.getElementById('modalAnswerVideoFull').classList.remove('hidden');
+}
+
+function resetModalMedia() {
+    document.getElementById('modalCurrentImage').classList.add('hidden');
+    document.getElementById('modalCurrentVideo').classList.add('hidden');
+    document.getElementById('modalCurrentAnswerImage').classList.add('hidden');
+    document.getElementById('modalCurrentAnswerVideo').classList.add('hidden');
+    document.getElementById('newImagePreviewContainer').classList.add('hidden');
+    document.getElementById('newImagePreview').src = '';
+    document.getElementById('newAnswerImagePreviewContainer').classList.add('hidden');
+    document.getElementById('newAnswerImagePreview').src = '';
+    document.getElementById('modalNewVideoContainer').classList.add('hidden');
+    document.getElementById('modalNewVideoPreview').src = '';
+    document.getElementById('modalNewAnswerVideoContainer').classList.add('hidden');
+    document.getElementById('modalNewAnswerVideoPreview').src = '';
+    document.querySelector('#questionModal input[name="image"]').value = '';
+    document.getElementById('modalAnswerImageInput').value = '';
+    document.getElementById('modalVideoUrlInput').value = '';
+    document.getElementById('modalAnswerVideoUrlInput').value = '';
+    document.getElementById('modalCurrentVideoFrame').src = '';
+    document.getElementById('modalCurrentAnswerVideoFrame').src = '';
+    document.getElementById('modalAnswerVideoThumbImg').src = '';
+    document.getElementById('modalAnswerVideoThumb').classList.remove('hidden');
+    document.getElementById('modalAnswerVideoFull').classList.add('hidden');
+}
+
 function openQuestionModal(catId, points) {
     document.getElementById('modalFormAction').value = 'add_question';
     document.getElementById('modalQuestionId').value = '';
@@ -531,19 +676,10 @@ function openQuestionModal(catId, points) {
     document.querySelector('#questionModal textarea[name="question_text"]').value = '';
     document.querySelector('#questionModal input[name="answer_text"]').value = '';
     document.getElementById('modalTimeLimit').value = '30';
-    document.querySelector('#questionModal input[name="video_url"]').value = '';
     document.getElementById('modalSpecialToggle').checked = false;
     document.getElementById('modalSpecialType').value = 'cat_choose_player';
     toggleSpecialTypeFields();
-    document.getElementById('modalCurrentImage').classList.add('hidden');
-    document.getElementById('modalCurrentVideo').classList.add('hidden');
-    document.getElementById('newImagePreviewContainer').classList.add('hidden');
-    document.getElementById('newImagePreview').src = '';
-    document.querySelector('#questionModal input[name="image"]').value = '';
-    document.getElementById('modalCurrentAnswerImage').classList.add('hidden');
-    document.getElementById('newAnswerImagePreviewContainer').classList.add('hidden');
-    document.getElementById('newAnswerImagePreview').src = '';
-    document.getElementById('modalAnswerImageInput').value = '';
+    resetModalMedia();
     document.getElementById('modalTitleText').innerText = JS_MODAL_ADD_TITLE;
     document.getElementById('questionModal').classList.remove('hidden');
     document.getElementById('questionModal').classList.add('flex');
@@ -559,52 +695,51 @@ function openEditModal(q) {
     document.querySelector('#questionModal textarea[name="question_text"]').value = q.question_text;
     document.querySelector('#questionModal input[name="answer_text"]').value = q.answer_text;
     document.getElementById('modalTimeLimit').value = q.time_limit;
-    document.querySelector('#questionModal input[name="video_url"]').value = '';
 
-    const imgBlock = document.getElementById('modalCurrentImage');
-    const imgPreview = document.getElementById('modalCurrentImagePreview');
-    const imgBroken = document.getElementById('modalImgBroken');
+    resetModalMedia();
+
+    // Question image
     if (q.image_url) {
+        const imgPreview = document.getElementById('modalCurrentImagePreview');
         imgPreview.style.display = '';
         imgPreview.src = '/storage/images/' + q.image_url;
-        imgBroken.classList.add('hidden');
+        document.getElementById('modalImgBroken').classList.add('hidden');
         document.getElementById('modalClearImage').checked = false;
-        imgBlock.classList.remove('hidden');
-    } else {
-        imgBlock.classList.add('hidden');
+        document.getElementById('modalCurrentImage').classList.remove('hidden');
     }
 
-    const vidBlock = document.getElementById('modalCurrentVideo');
+    // Question video
     if (q.video_url) {
-        document.getElementById('modalCurrentVideoId').innerText = q.video_url;
-        vidBlock.classList.remove('hidden');
-    } else {
-        vidBlock.classList.add('hidden');
+        document.getElementById('modalCurrentVideoFrame').src = `https://www.youtube.com/embed/${q.video_url}`;
+        document.getElementById('modalClearVideo').checked = false;
+        document.getElementById('modalCurrentVideo').classList.remove('hidden');
+    }
+
+    // Answer image
+    if (q.answer_image_url) {
+        const ansImgPreview = document.getElementById('modalCurrentAnswerImagePreview');
+        ansImgPreview.style.display = '';
+        ansImgPreview.src = '/storage/images/' + q.answer_image_url;
+        document.getElementById('modalAnswerImgBroken').classList.add('hidden');
+        document.getElementById('modalClearAnswerImage').checked = false;
+        document.getElementById('modalCurrentAnswerImage').classList.remove('hidden');
+    }
+
+    // Answer video
+    if (q.answer_video_url) {
+        document.getElementById('modalAnswerVideoThumbImg').src = `https://img.youtube.com/vi/${q.answer_video_url}/hqdefault.jpg`;
+        document.getElementById('modalAnswerVideoThumb').classList.remove('hidden');
+        document.getElementById('modalAnswerVideoFull').classList.add('hidden');
+        document.getElementById('modalCurrentAnswerVideoFrame').src = '';
+        document.getElementById('modalClearAnswerVideo').checked = false;
+        document.getElementById('modalCurrentAnswerVideo').classList.remove('hidden');
     }
 
     const isSpecial = q.special_type !== 'normal';
     document.getElementById('modalSpecialToggle').checked = isSpecial;
     if (isSpecial) document.getElementById('modalSpecialType').value = q.special_type;
     toggleSpecialTypeFields();
-    document.getElementById('newImagePreviewContainer').classList.add('hidden');
-    document.getElementById('newImagePreview').src = '';
-    document.querySelector('#questionModal input[name="image"]').value = '';
 
-    const answerImgBlock = document.getElementById('modalCurrentAnswerImage');
-    const answerImgPreview = document.getElementById('modalCurrentAnswerImagePreview');
-    const answerImgBroken = document.getElementById('modalAnswerImgBroken');
-    if (q.answer_image_url) {
-        answerImgPreview.style.display = '';
-        answerImgPreview.src = '/storage/images/' + q.answer_image_url;
-        answerImgBroken.classList.add('hidden');
-        document.getElementById('modalClearAnswerImage').checked = false;
-        answerImgBlock.classList.remove('hidden');
-    } else {
-        answerImgBlock.classList.add('hidden');
-    }
-    document.getElementById('newAnswerImagePreviewContainer').classList.add('hidden');
-    document.getElementById('newAnswerImagePreview').src = '';
-    document.getElementById('modalAnswerImageInput').value = '';
     document.getElementById('modalTitleText').innerText = JS_MODAL_EDIT_TITLE;
     document.getElementById('questionModal').classList.remove('hidden');
     document.getElementById('questionModal').classList.add('flex');

@@ -68,6 +68,10 @@ return [
     'dashboard.questions'        => 'Суроолор:',
     'dashboard.play_btn'         => 'Ойнотуу',
     'dashboard.edit_btn'         => 'Оңдоо',
+    'dashboard.rename_save'      => 'Сактоо',
+    'dashboard.rename_cancel'    => 'Жокко чыгаруу',
+    'dashboard.rename_success'   => 'Аталыш өзгөртүлдү.',
+    'dashboard.rename_error'     => 'Аталышты өзгөртүү мүмкүн болгон жок.',
 
     // History
     'history.page_title'     => 'Тарых — Своя Игра',
@@ -179,6 +183,9 @@ return [
     'game.play.confirm_yes'        => 'Ооба',
     'game.play.confirm_no'         => 'Жок',
     'game.play.no_active_round'    => 'Сессияда активдүү раунд жок.',
+    'game.play.final_round_title'  => 'АКЫРКЫ РАУНД',
+    'game.play.final_round_desc'   => 'Финал үчүн бир категорияны тандаңыз',
+    'game.play.final_round_pick'   => 'Тандоо',
 
     // Game summary
     'game.summary.page_title'    => 'Оюн жыйынтыгы — Своя Игра',
